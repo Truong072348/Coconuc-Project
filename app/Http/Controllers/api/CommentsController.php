@@ -27,7 +27,7 @@ class CommentsController extends Controller
             $comments->comments_user_id_foreign = $userId;
             $comments->comments_product_id_foreign = $productId;
             $comments->comment = $request['comment'];
-            $comments->level = 1;
+            $comments->level = $request['level'];
             $comments->save();
             return response()->json(['status' => true]);
         }
@@ -61,22 +61,33 @@ class CommentsController extends Controller
         }
     }
 
-    public function getComment($commentId) {
-        if (Comment::where('id', $commentId)->exists()) {
-            $comment = Comment::find($commentId);
-            $user = User::find($comment['comments_user_id_foreign']);
-            $user_name = $user['name'];
-            $result = [
-                'user_name' => $user_name,
-                'comment' => $comment['comment'],
-                'title' => $comment['title'],
-                'level' => $comment['level'],
-                'product_id' => $comment['comments_product_id_foreign'],
-                'date' => $comment->created_at->format('d-m-Y'),
-                'time' => $comment->created_at->format('h:i')
-            ];
+    public function getComment($productId) {
+        if (Products::where('id', $productId)->exists()) {
+            $comment = Comment::where('comments_product_id_foreign', $productId)->get();
 
-            return response()->json($result);
+            while(Comment::where('comments_product_id_foreign', $productId)->exists()) {
+                $comment_list = Comment::where('comments_product_id_foreign', $productId)->get();
+                $result = [];
+
+                if ($comment_list->isEmpty()) {
+                    return response()->json(
+                        ['error' => 'comments are null']
+                    );
+                }
+                foreach ($comment_list as $item) {
+                    $user = User::find($item['comments_user_id_foreign']);
+                    $user_name = $user['name'];
+                    $result[] = [
+                        'user_name' => $user_name,
+                        'comment' => $item['comment'],
+                        'title' => $item['title'],
+                        'level' => $item['level'],
+                        'product_id' => $item['comments_product_id_foreign'],
+                        'date' => $item->created_at->format('d-m-Y')
+                    ];
+                }
+                return response()->json($result);
+            }
         }
         else {
             return response()->json(['status' => false]);
